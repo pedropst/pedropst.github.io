@@ -3,27 +3,43 @@
         <link rel="stylesheet" href="https://pyscript.net/alpha/pyscript.css"/>
         <script defer src="https://pyscript.net/alpha/pyscript.js"></script>
     </head>
-    <body>
-        <div style="justify-content: spaceBetween; display:inline">
-            <div id="search_part", style="display: inline;">
-                <p>Buscar</p>
-                <input type="text" id="search_input">
-                <button id="search-submit" type="submit" pys-onClick="search">OK</button>
-                <div id="search-output"></div>
-            </div>
-            <div id="order_part", style="display: inline;">
-                <p>Ordenar</p>
-                <input type="text" id="order_input">
-                <button id="order-submit" type="submit" pys-onClick="order_by">OK</button>
-                <div id="order-output"></div>
-            </div>
-            <div id="list_part", style="display: inline;">
-                <p>Listar</p>
-                <input type="text" id="list_input">
-                <button id="list-submit" type="submit" pys-onClick="archived">OK</button>
-                <div id="list-output"></div>
+    <body style="background-color: grey;">
+        <div id="tutorial" style="margin: 30px;">
+            <ul style="font-weight: 500;">BREVE EXPLICAÇÃO:</ul>
+            <li>O campo de busca irá retornar uma lista de repositórios que possuem o texto digitado.</li>
+            <li>O campo de ordenar irá retornar a lista de repositórios ordenadas conforme a 'updated_at' ou 'name'.</li>
+            <li>O campo de arquivados irá retornar a lista de repositórios dizendo se são ou não arquivados.</li>
+        </div>
+
+        <p style="font-size: 10px;">*As vezes é necessário clicar duas vezes no botão para ir, Py-script ainda possui algumas instabilidades.</p>
+        <div style="background-color: rgb(247, 114, 114); height: 100px; padding: auto">
+            <div style="display: flex; transform: translate(0, 125%);">
+                <div id="search_part", style="display: flex; width: 33%; justify-content: space-evenly;">
+                    <p style="margin:auto; font-weight: 500;">Buscar</p>
+                    <input type="text" id="search_input" style="border: 1px solid gray; border-radius: 8px; padding-left: 5px; width: 200px;">
+                    <button id="search-submit" type="submit" pys-onClick="search" style="background-color: white; width: 60px; font-weight: 900; border-radius: 8px; border: 1px solid; height: fit-content; margin: auto;">OK</button>
+                    <div id="search-output" style="display: inline-flexbox; bottom: 0;"></div>
+                </div>
+                <div style="background-color: white; width: 3px;"></div>
+                <div id="order_part", style="display: flex; width: 33%; justify-content: space-evenly;">
+                    <p style="margin:auto; font-weight: 500;">Ordenar</p>
+                    <select name="order" id="order_input" style="border: 1px solid gray; border-radius: 8px; padding-left: 5px; width: 200px;">
+                        <option value="updated_at">Último commit</option>
+                        <option value="name">Nome</option>
+                    </select>
+                    <!-- <input type="text" id="order_input" style="border: 1px solid gray; border-radius: 8px; padding-left: 5px;"> -->
+                    <button id="order-submit" type="submit" pys-onClick="order_by" style="background-color: white; width: 60px; font-weight: 900; border-radius: 8px; border: 1px solid; height: fit-content; margin: auto;">OK</button>
+                    <div id="order-output" style="display: inline-flexbox; bottom: 0;"></div>
+                </div>
+                <div style="background-color: white; width: 3px;"></div>
+                <div id="archived_part", style="display: flex; width: 33%; justify-content: space-evenly;">
+                    <p style="display: block; align-items: center; margin: auto; font-weight: 500;">Arquivados</p>
+                    <button id="archived-submit" type="submit" pys-onClick="archived" style="background-color: white; width: 60px; font-weight: 900; border-radius: 8px; border: 1px solid; height: fit-content; margin: auto;">OK</button>
+                    <div id="list-output" style="display: inline-flexbox; bottom: 0;"></div>
+                </div>
             </div>
         </div>
+        <div id="result" style="background-color: gray;"></div>
 
         <py-script>
             from pyodide.http import pyfetch
@@ -31,17 +47,15 @@
             from typing import List
             from datetime import datetime
             from pyodide import JsProxy
-
-
-
+            
             async def get_all_repositories():
-                response = await pyfetch(url="https://api.github.com/users/pedropst/repos", method="GET")
+                response = await pyfetch(url=f"https://api.github.com/users/pedropst/repos", method="GET")
                 response_dict = await response.json()
 
                 return response_dict
             
             all_repositories = await get_all_repositories()
-            
+                            
             def filter(repository:dict, key:str):
                 return repository[key]
         
@@ -49,19 +63,18 @@
                 key = Element('order_input').element.value
                 repositories = all_repositories
                 if key == 'updated_at':
-                    pyscript.write('order-output', str([x['name'] for x in sorted(repositories, key=lambda x: datetime.strptime(x['updated_at'], '%Y-%m-%dT%H:%M:%SZ'), reverse=True)]))
+                    pyscript.write('result', str([(x['name'], x['updated_at']) for x in sorted(repositories, key=lambda x: datetime.strptime(x['updated_at'], '%Y-%m-%dT%H:%M:%SZ'), reverse=True)]))
                 elif key == 'name':
-                    pyscript.write('order-output', str([x['name'] for x in sorted(repositories, key=lambda x: x['name'].lower(), reverse=False)]))
+                    pyscript.write('result', str([x['name'] for x in sorted(repositories, key=lambda x: x['name'].lower(), reverse=False)]))
             
             def search(proxy: JsProxy):
                 repositories = all_repositories
                 search_word = Element('search_input').element.value
-                pyscript.write('search-output', str([repository for repository in repositories if search_word.lower() in repository['name'].lower()]))
+                pyscript.write('result', str([repository['name'] for repository in repositories if search_word.lower() in repository['name'].lower()]))
                 
             def archived(proxy: JsProxy):
                 repositories = all_repositories
-                <!-- search_word = Element('list_input').element.value -->
-                pyscript.write('list-output', str([f"{repository['name']} está arquivado: {repository['archived']}" for repository in repositories]))
+                pyscript.write('result', str([f"{repository['name']} {'não está arquivado.' if not repository['archived'] else 'está arquivado.'}" for repository in repositories]))
         </py-script>
     </body>
 </html>
